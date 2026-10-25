@@ -10,7 +10,7 @@ from .ner_pipeline.event_module import detect_triggers
 from .ner_pipeline.phobert import predict_sentence
 
 app = FastAPI()
-
+#he
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
