@@ -26,12 +26,12 @@ function App() {
     setTriggerResult(null);
     try {
       const [response1, response2] = await Promise.all([
-        fetch("http://localhost:8000/api/process", {
+        fetch("http://localhost:3001/api/process", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: input }),
         }),
-        fetch("http://localhost:8000/api/process/event-trigger", {
+        fetch("http://localhost:3001/api/process/event-trigger", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: input }),
