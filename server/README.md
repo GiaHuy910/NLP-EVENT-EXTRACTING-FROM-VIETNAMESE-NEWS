@@ -7,10 +7,10 @@ The server provides two related components for Vietnamese legal-news text:
 - **Part 2 — Event extraction:** rule-based or PhoBERT trigger detection and role/argument extraction
   for 8 event types and 10 roles.
 
-The Part 1 API is in `src/main.py`. The reusable NER inference code is in
-`src/ner_pipeline/phobert.py`; trigger rules and event extraction are in
-`src/ner_pipeline/event_module.py`. Part 2 training and evaluation commands are under
-`src/event_pipeline/`.
+The API is in `src/ner_pipeline/app.py` and uses `LegalExtractionPipeline` to run NER followed by
+rule-based event extraction. The reusable NER inference code is in `src/ner_pipeline/phobert.py`;
+trigger rules and event extraction are in `src/ner_pipeline/event_module.py`. The separate Part 2
+model training and evaluation commands are under `src/event_pipeline/`.
 
 ## 1. Requirements and installation
 
@@ -32,9 +32,11 @@ On macOS/Linux, activate with `source .venv/bin/activate`.
 
 ## 2. Model files
 
-Model files are not committed to Git. Place the Part 1 model directly under `server/models/`. Part 2
-models, when used, belong in `server/models/event_trigger/` and `server/models/event_argument/`.
-The model directories should contain their `config.json`, weights, and tokenizer files.
+Model files are not committed to Git. Place the Part 1 NER model directly under `server/models/`.
+The API loads this model at startup and requires its `config.json`, weights, and tokenizer files.
+The separate Part 2 models, when used by the command-line event pipeline, belong in
+`server/models/event_trigger/` and `server/models/event_argument/`; the API does not load those
+checkpoints.
 
 ## 3. NER input data and preprocessing
 
@@ -84,17 +86,18 @@ characters in the normalized input sentence.
 
 ## 5. Run the API
 
-Start from the `server/` directory:
+Start from the `server/` directory after installing the NER model:
 
 ```powershell
-python -m src.main
+uvicorn src.ner_pipeline.app:app --host 127.0.0.1 --port 3001 --reload
 ```
 
-The service listens at `http://127.0.0.1:3001`.
+The service listens at `http://127.0.0.1:3001`; its interactive documentation is at
+`http://127.0.0.1:3001/docs`. The client is configured to use this port.
 
-### NER endpoint
+### Text endpoint
 
-`POST /api/process` accepts a JSON body with a `text` field:
+`POST /api/process` accepts JSON with a `text` field (the older `input` field is also accepted):
 
 ```powershell
 $body = @{ text = "Ngày 15/8, Công an quận Đống Đa đã khởi tố Nguyễn Văn A." } | ConvertTo-Json
@@ -102,13 +105,14 @@ Invoke-RestMethod -Uri http://127.0.0.1:3001/api/process -Method Post `
   -ContentType "application/json" -Body $body
 ```
 
-The response includes `input_text` and `entities`. Empty input returns HTTP 400. A missing NER model
-returns HTTP 503 with an actionable error message.
+The response includes `input_text`, `entities`, and rule-based `events`. Empty input returns HTTP
+400. The NER model is loaded when the API starts, so a missing or incompatible model prevents
+startup.
 
-### Trigger-only endpoint
+### Trigger-only and file-upload endpoints
 
 `POST /api/process/event-trigger` calls only `detect_triggers` from
-`src/ner_pipeline/event_module.py`; it does not run NER or load a model:
+`src/ner_pipeline/event_module.py`; it does not run NER or require an event-model checkpoint:
 
 ```powershell
 $body = @{ text = "Công an đã khởi tố Nguyễn Văn A." } | ConvertTo-Json
@@ -117,6 +121,8 @@ Invoke-RestMethod -Uri http://127.0.0.1:3001/api/process/event-trigger -Method P
 ```
 
 The response includes `input_text` and a `triggers` list with event type and character offsets.
+`POST /api/process-file` accepts a UTF-8 text file as multipart form data in the `file` field and
+returns the same entity and event response as `POST /api/process`.
 
 ## 6. Part 2: Event training and evaluation
 
@@ -146,7 +152,7 @@ From the repository root:
 ```powershell
 python -m unittest discover -s server/test -p "test_ner_pipeline.py"
 python -m unittest discover -s server/test -p "test_event_metrics.py"
-python -m unittest server.test.test_main_api
+python -m unittest server.test.test_ner_app_api
 ```
 
 NER error analysis is written to `server/datasets/processed/error-analysis.json`.

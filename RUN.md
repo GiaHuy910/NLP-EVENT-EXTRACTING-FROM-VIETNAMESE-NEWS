@@ -41,18 +41,19 @@ From this point on, run commands from `server/` with the virtual environment act
 
 ## 3. Install the models
 
-Each model is about 500 MB and is not stored in Git. Download the model archive from the team's
-Drive and extract it into `server/models/` so the directory structure looks like this:
+The model files are not stored in Git. Download `ner_model.zip` from the
+[GitHub Models release](https://github.com/GiaHuy910/NLP---Vietnamese-Crimes-/releases/tag/models-v1)
+and extract it into `server/models/` so the directory structure looks like this:
 
 ```
 server/
   models/
     config.json, model.safetensors, ...   (Part 1 NER model, directly inside models/)
-    event_trigger/                        (Part 2 trigger model)
-    event_argument/                       (Part 2 role model)
 ```
 
-The baseline and metric-test steps do not require trained models and can be run first.
+The API requires the NER model at startup. The optional `event_models.zip` archive contains
+checkpoints used by the command-line Part 2 experiments; the API below uses rule-based event
+extraction and does not need those checkpoints.
 
 ## 4. Part 1: NER
 
@@ -61,10 +62,11 @@ The baseline and metric-test steps do not require trained models and can be run 
 Make sure the NER model is in `server/models/`, then run this from `server/`:
 
 ```powershell
-python -m src.main
+uvicorn src.ner_pipeline.app:app --host 127.0.0.1 --port 3001 --reload
 ```
 
-Send text to `POST /api/process`:
+Keep the terminal open. The API documentation is at
+`http://127.0.0.1:3001/docs`. Send text to `POST /api/process` using the `text` field:
 
 ```powershell
 $body = @{ text = "Ngày 15/8, Công an quận Đống Đa đã khởi tố Nguyễn Văn A." } | ConvertTo-Json
@@ -72,10 +74,11 @@ Invoke-RestMethod -Uri http://127.0.0.1:3001/api/process -Method Post `
   -ContentType "application/json" -Body $body
 ```
 
-The API returns `input_text` and an `entities` list. Each entity has `text`, `label`, `start`, and
-`end`. If the model is missing, the API returns HTTP 503 with an error message.
+The response contains `input_text`, an `entities` list, and an `events` list. Each entity has
+`text`, `label`, `start`, and `end`. The API loads the NER model once when it starts. A missing or
+incompatible model prevents startup.
 
-The trigger-only endpoint does not require a model:
+The trigger-only endpoint uses rules and does not require the event-model checkpoints:
 
 ```powershell
 $body = @{ text = "Công an đã khởi tố Nguyễn Văn A." } | ConvertTo-Json
@@ -83,7 +86,11 @@ Invoke-RestMethod -Uri http://127.0.0.1:3001/api/process/event-trigger -Method P
   -ContentType "application/json" -Body $body
 ```
 
-It returns `input_text` and the `triggers` list produced by `detect_triggers`.
+It returns `input_text` and the `triggers` list produced by `detect_triggers`. The API also exposes
+`POST /api/process-file` for UTF-8 text uploads sent as multipart form data with the field name
+`file`.
+
+The frontend sends requests to port `3001`; keep the backend running while using the client.
 
 ### Evaluate NER from the command line
 
@@ -157,6 +164,7 @@ Checkpoints are selected using validation data; test data is not used during tra
 
 ```powershell
 python -m unittest discover -s test -p "test_event_metrics.py"
+python -m unittest discover -s test -p "test_ner_app_api.py"
 ```
 
 Expected output: `Ran 4 tests ... OK`.
