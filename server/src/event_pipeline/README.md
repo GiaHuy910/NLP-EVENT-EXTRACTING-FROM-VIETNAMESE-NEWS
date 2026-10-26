@@ -1,7 +1,7 @@
 # Part 2: Trigger, Argument, and Relation
 
 This directory contains the Part 2 evaluator, rule-based baseline, and PhoBERT models. It uses a
-schema with 8 event types and 10 roles (see `docs/annotation_guidelines.md`). The evaluator and
+schema with 8 event types and 10 roles (see `../../../ANNOTATION-GUIDELINES.md`). The evaluator and
 baseline use only the Python standard library; model training and inference require `torch`,
 `transformers`, and `underthesea` (included in `requirements-ner.txt`).
 
