@@ -105,8 +105,8 @@ Place `train_cleaned_labeled.csv`, `val_cleaned_labeled.csv`, and `test_cleaned_
 
 1. **Encoding cleanup** (`step1_fix_encoding.py`): normalize Unicode to NFC; repair separated
    Vietnamese diacritics; remove zero-width spaces, stray BOMs, and soft hyphens; replace the
-   replacement character with a space; and collapse repeated whitespace. `clean_text` is also used
-   for text submitted to the API.
+   replacement character with a space; and collapse repeated whitespace. The active API pipeline
+   normalizes input text to NFC separately; it does not call this data-preparation helper.
 2. **Noise removal and leakage prevention** (`step2_clean_news.py`): remove photo captions, `XEM CLIP:`
    prefixes, and URLs; reconcile inconsistent Label/SubLabel values; keep test fixed, remove test
    duplicates from validation, and remove validation/test duplicates from training. Documents are
@@ -116,8 +116,8 @@ Place `train_cleaned_labeled.csv`, `val_cleaned_labeled.csv`, and `test_cleaned_
    step 2 to restore the unfiltered data.
 4. **Sentence splitting** (`step4_split_sentences.py`): use underthesea, normalize punctuation spacing,
    join fragments created by abbreviation splitting, remove a duplicated summary sentence, and retain
-   sentences between `MIN_WORDS` (5) and `MAX_WORDS` (100). The sentence-splitting helper is also used
-   for articles submitted through the API.
+   sentences between `MIN_WORDS` (5) and `MAX_WORDS` (100). This article-level helper is used when
+   preparing the dataset; the active API does not call it to split submitted text into sentences.
 5. **Sampling** (`step5_sample_for_annotation.py`): sample evenly by SubLabel and select at most two
    sentences per article. Half of the training sample is drawn from sentences matching trigger keywords;
    the rest is random. Validation and test are randomly sampled so keyword rules are not favored.

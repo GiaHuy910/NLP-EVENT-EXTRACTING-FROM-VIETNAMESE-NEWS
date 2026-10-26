@@ -1,88 +1,87 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, status
-from pydantic import BaseModel
-from typing import Optional
+from fastapi import FastAPI, File, HTTPException, UploadFile, status
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import AliasChoices, BaseModel, Field
 
-# Import the pipeline orchestrator.
-from server.src.ner_pipeline.pipeline import LegalExtractionPipeline
+from .event_module import detect_triggers
+from .pipeline import LegalExtractionPipeline
 
 app = FastAPI(
-    title="API Trích xuất Thực thể & Sự kiện Pháp luật",
-    description="Backend xử lý NLP cho bài toán vi phạm pháp luật tiếng Việt"
+    title="Vietnamese Legal Entity and Event Extraction API",
+    description="NLP API for Vietnamese legal-news text.",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Initialize the pipeline once at module load so the model is loaded only once.
 nlp_pipeline = LegalExtractionPipeline()
 
-
-# 1. Define the request body for text input.
 class TextProcessRequest(BaseModel):
-    input: str
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "input": "Ngày 15/8, Công an quận Đống Đa đã khởi tố và bắt tạm giam Nguyễn Văn A vì tội lừa đảo chiếm đoạt tài sản."
-            }
-        }
-
-
-# =====================================================================
-# ENDPOINT 1: /api/process (Process submitted text)
-# =====================================================================
-@app.post("/api/process", summary="Xử lý chuỗi văn bản nhập từ Client")
-@app.get("/api/process", summary="Xử lý chuỗi văn bản (Hỗ trợ fallback GET)")
-def process_text_endpoint(payload: TextProcessRequest):
-    text = payload.input
-    
-    if not text or not text.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Trường 'input' không được để trống."
-        )
-    
-    # Run NER and event extraction.
-    result = nlp_pipeline.process(text)
-    
-    if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=result["error"]
-        )
-        
-    return result
+    text: str = Field(
+        validation_alias=AliasChoices("text", "input"),
+        json_schema_extra={
+            "examples": [
+                "Ngày 15/8, Công an quận Đống Đa đã khởi tố và bắt tạm giam "
+                "Nguyễn Văn A vì tội lừa đảo chiếm đoạt tài sản."
+            ]
+        },
+    )
 
 
-# =====================================================================
-# ENDPOINT 2: /api/process-file (Process an uploaded file buffer)
-# =====================================================================
-@app.post("/api/process-file", summary="Xử lý file văn bản nạp từ Client")
-@app.get("/api/process-file", summary="Xử lý file văn bản (Hỗ trợ fallback GET)")
-async def process_file_endpoint(file: UploadFile = File(...)):
-    try:
-        # Read the raw buffer uploaded by the client.
-        file_bytes = await file.read()
-        
-        # Decode the buffer as UTF-8 text.
-        text = file_bytes.decode("utf-8")
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Không thể đọc buffer hoặc định dạng file không hỗ trợ UTF-8: {str(e)}"
-        )
-
+def _process_text(text: str) -> dict:
     if not text.strip():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Nội dung file rỗng."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Text must not be empty.",
         )
 
-    # Run the processing pipeline.
     result = nlp_pipeline.process(text)
-    
     if "error" in result:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=result["error"]
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=result["error"],
         )
 
-    return result
+    return {
+        "message": "Text processed successfully.",
+        "input_text": text,
+        "status": "success",
+        "entities": result["entities"],
+        "events": result["events"],
+    }
+
+
+@app.post("/api/process", summary="Recognize entities and extract events from text")
+def process_text_endpoint(payload: TextProcessRequest) -> dict:
+    return _process_text(payload.text)
+
+
+@app.post("/api/process/event-trigger", summary="Detect event triggers from text")
+def detect_event_triggers(payload: TextProcessRequest) -> dict:
+    if not payload.text.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Text must not be empty.",
+        )
+
+    return {
+        "input_text": payload.text,
+        "triggers": detect_triggers(payload.text),
+    }
+
+
+@app.post("/api/process-file", summary="Recognize entities and extract events from a UTF-8 file")
+async def process_file_endpoint(file: UploadFile = File(...)) -> dict:
+    file_bytes = await file.read()
+    try:
+        text = file_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The uploaded file must contain UTF-8 text.",
+        ) from exc
+
+    return _process_text(text)

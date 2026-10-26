@@ -9,18 +9,16 @@ function App() {
   >("entities");
   const [loading, setLoading] = useState(false);
 
-  const MAX_WORDS = 256;
   const words = input.trim() ? input.trim().split(/\s+/) : [];
   const wordCount = words.length;
-  const isExceeded = wordCount > MAX_WORDS;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setInput(value);
   };
 
   const handleSendProcess = async () => {
-    if (!input || isExceeded) return;
+    if (!input.trim()) return;
     setLoading(true);
     setEntityResult(null);
     setTriggerResult(null);
@@ -46,7 +44,7 @@ function App() {
     } catch (error) {
       console.error(error);
       setEntityResult({
-        error: "Cannot connect to backend server (http://localhost:8000)",
+        error: "Cannot connect to backend server (http://localhost:3001)",
       });
     } finally {
       setLoading(false);
@@ -186,30 +184,27 @@ function App() {
         <div className="w-100 mb-4">
           <div className="d-flex justify-content-between align-items-center mb-1 px-1">
             <span className="text-muted small">Input text content</span>
-            <span
-              className={`small fw-bold ${isExceeded ? "text-danger" : "text-info"}`}
-            >
-              {wordCount} / {MAX_WORDS} words{" "}
-              {isExceeded && "⚠️ (Exceeds limit!)"}
-            </span>
+            <span className="small fw-bold text-info">{wordCount} words</span>
           </div>
 
           <div className="input-group d-flex justify-content-between align-items-center">
-            <input
-              type="text"
-              className={`form-control rounded-0 ${isExceeded ? "border-danger text-danger" : ""}`}
+            <textarea
+              rows={4}
+              className="form-control rounded-0"
               placeholder="Enter crime news or article text..."
               value={input}
               onChange={handleChange}
               onKeyDown={(e) =>
-                e.key === "Enter" && !isExceeded && handleSendProcess()
+                e.key === "Enter" &&
+                (e.ctrlKey || e.metaKey) &&
+                handleSendProcess()
               }
             />
             <button
-              className={`btn ${input && !loading && !isExceeded ? "btn-primary" : "disabled btn-secondary"} rounded-0`}
+              className={`btn ${input.trim() && !loading ? "btn-primary" : "disabled btn-secondary"} rounded-0`}
               type="button"
               onClick={handleSendProcess}
-              disabled={loading || !input || isExceeded}
+              disabled={loading || !input.trim()}
             >
               {loading ? "Processing..." : "Process"}
             </button>
@@ -217,13 +212,6 @@ function App() {
               Add file
             </button>
           </div>
-
-          {isExceeded && (
-            <div className="text-danger small mt-1 px-1">
-              Warning: Input text has exceeded the maximum limit of {MAX_WORDS}{" "}
-              words!
-            </div>
-          )}
         </div>
 
         {/* Khu vực kết quả với 5 nút Tabs */}

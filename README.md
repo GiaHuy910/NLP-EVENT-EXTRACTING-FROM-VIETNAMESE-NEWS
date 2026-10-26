@@ -60,8 +60,9 @@ Vite prints the local URL in the terminal, usually
 
 The models are available in the
 [GitHub Models release](https://github.com/GiaHuy910/NLP---Vietnamese-Crimes-/releases/tag/models-v1).
-Download `ner_model.zip` and `event_models.zip` from **Assets**, then extract both archives into
-the repository's `server/models/` directory.
+Download `ner_model.zip` and extract it into the repository's `server/models/` directory. The
+`event_models.zip` archive is optional for the command-line event-model experiments; the API
+described below uses rule-based event extraction and does not load those event model checkpoints.
 
 After extraction, check that the directory structure looks like this:
 
@@ -74,36 +75,33 @@ server/
     vocab.txt
     bpe.codes
     added_tokens.json
-    event_trigger/
-      config.json
-      model.safetensors
-      ...
-    event_argument/
-      config.json
-      model.safetensors
-      ...
 ```
 
 The NER model files must be directly inside `server/models/`, not nested in another `ner_model/`
-directory. The `event_trigger/` and `event_argument/` directories must also be directly inside
-`server/models/`. If your extraction tool creates an extra top-level folder, move its contents into
-the locations shown above. The backend requires the NER model to perform entity recognition.
+directory. If your extraction tool creates an extra top-level folder, move the model files into
+`server/models/`. The API requires this NER model to start and recognize entities.
 
 ## 5. Run the backend API
 
 Open a new terminal in the repository root, activate the Python virtual environment, and start the
-server:
+`app.py` API:
 
 ```powershell
 cd server
 .\.venv\Scripts\Activate.ps1
-uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+uvicorn src.ner_pipeline.app:app --host 127.0.0.1 --port 3001 --reload
 ```
 
-Keep this terminal open. The backend runs at [http://127.0.0.1:8000](http://127.0.0.1:8000), and
+Keep this terminal open. The backend runs at [http://127.0.0.1:3001](http://127.0.0.1:3001), and
 the interactive API documentation is available at
-[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs). The frontend running on port `5173`
-connects to the backend on port `8000`.
+[http://127.0.0.1:3001/docs](http://127.0.0.1:3001/docs). The frontend running on port `5173`
+connects to the backend on port `3001`.
+
+The frontend sends JSON with a `text` field. `POST /api/process` returns recognized `entities` and
+rule-based `events`; `POST /api/process/event-trigger` returns rule-based `triggers` only. The
+`POST /api/process-file` endpoint accepts a UTF-8 text file as multipart form data under the
+`file` field. The API loads the NER checkpoint at startup, so make sure it is installed before
+launching the server.
 
 ## Daily startup
 
@@ -114,4 +112,4 @@ After installing dependencies and downloading the models once, open two terminal
 
 If the API reports that a model cannot be found, check the `server/models/` directory structure in
 step 4. If the frontend cannot connect to the backend, make sure the backend is running on port
-`8000`.
+`8001`.

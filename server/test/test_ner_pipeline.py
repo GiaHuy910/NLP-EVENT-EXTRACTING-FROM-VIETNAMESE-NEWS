@@ -2,6 +2,7 @@ import csv
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from server.src.ner_pipeline.alignment import align_example, surface_tokens
 from server.src.ner_pipeline.dataset import (
@@ -14,6 +15,7 @@ from server.src.ner_pipeline.dataset import (
 from server.src.ner_pipeline.errors import NERPipelineError
 from server.src.ner_pipeline.metrics import metrics_from_spans, score_spans
 from server.src.ner_pipeline.phobert import _class_weights, predict_sentence
+from server.src.ner_pipeline.pipeline import LegalExtractionPipeline, _chunk_token_ranges
 from server.src.ner_pipeline.schema import AnnotatedExample, Mention, parse_entities
 
 
@@ -189,6 +191,106 @@ class MetricTests(unittest.TestCase):
             power=0.5,
         )
         self.assertGreater(weights[1], weights[0])
+
+
+class LongTextInferenceTests(unittest.TestCase):
+    def test_sliding_windows_cover_long_inputs_with_overlap(self) -> None:
+        ranges = _chunk_token_ranges(
+            [1] * 600,
+            set(),
+            max_length=256,
+            overlap_subwords=64,
+        )
+
+        self.assertGreater(len(ranges), 2)
+        self.assertEqual(ranges[0][0], 0)
+        self.assertEqual(ranges[-1][1], 600)
+        for (start, end), (next_start, _) in zip(ranges, ranges[1:]):
+            self.assertLessEqual(end - start, 254)
+            self.assertGreaterEqual(end - next_start, 64)
+
+    def test_chunks_prefer_sentence_boundaries_when_possible(self) -> None:
+        ranges = _chunk_token_ranges(
+            [1] * 20,
+            {8, 16},
+            max_length=10,
+            overlap_subwords=2,
+        )
+        self.assertEqual(ranges[0], (0, 8))
+
+    def test_inference_handles_more_than_256_words(self) -> None:
+        import torch
+        from types import SimpleNamespace
+
+        class FakeEncoding(dict):
+            def __init__(self, values, word_ids):
+                super().__init__(values)
+                self._word_ids = word_ids
+
+            def word_ids(self):
+                return self._word_ids
+
+        class FakeTokenizer:
+            is_fast = True
+            model_input_names = ["input_ids", "attention_mask"]
+
+            def __call__(
+                self,
+                tokens,
+                *,
+                is_split_into_words,
+                truncation=False,
+                add_special_tokens=True,
+            ):
+                del is_split_into_words, truncation
+                word_ids = list(range(len(tokens)))
+                input_ids = [2] * len(tokens)
+                if add_special_tokens:
+                    input_ids = [101, *input_ids, 102]
+                    word_ids = [None, *word_ids, None]
+                return FakeEncoding(
+                    {
+                        "input_ids": input_ids,
+                        "attention_mask": [1] * len(input_ids),
+                    },
+                    word_ids,
+                )
+
+        class FakeModel:
+            device = torch.device("cpu")
+
+            def __init__(self):
+                self.sequence_lengths = []
+
+            def eval(self):
+                return self
+
+            def __call__(self, input_ids, attention_mask):
+                del attention_mask
+                self.sequence_lengths.append(input_ids.shape[1])
+                logits = torch.zeros(
+                    (1, input_ids.shape[1], 17), dtype=torch.float32
+                )
+                logits[:, :, 0] = 1
+                return SimpleNamespace(logits=logits)
+
+        sentence = " ".join(f"word{index}" for index in range(600))
+        pipeline = LegalExtractionPipeline.__new__(LegalExtractionPipeline)
+        pipeline.tokenizer = FakeTokenizer()
+        pipeline.model = FakeModel()
+        pipeline.device = torch.device("cpu")
+        pipeline.max_length = 256
+        pipeline.overlap_subwords = 64
+
+        with patch(
+            "server.src.ner_pipeline.pipeline._underthesea_segments",
+            side_effect=lambda text: text.split(),
+        ):
+            entities = pipeline._predict_ner_internal(sentence)
+
+        self.assertEqual(entities, [])
+        self.assertGreater(len(pipeline.model.sequence_lengths), 1)
+        self.assertLessEqual(max(pipeline.model.sequence_lengths), 256)
 
 
 if __name__ == "__main__":
