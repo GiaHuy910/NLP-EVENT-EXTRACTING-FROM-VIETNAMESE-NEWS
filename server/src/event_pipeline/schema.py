@@ -1,4 +1,4 @@
-"""Part 2 schema, aligned with docs/annotation_guidelines.md and Label Studio."""
+"""Part 2 schema, aligned with ANNOTATION-GUIDELINES.md and Label Studio."""
 
 ENTITY_TYPES = ("PERSON", "ORGANIZATION", "LOCATION", "TIME", "MONEY", "DRUG", "PRODUCT", "CRIME")
 

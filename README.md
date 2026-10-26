@@ -98,10 +98,8 @@ the interactive API documentation is available at
 connects to the backend on port `3001`.
 
 The frontend sends JSON with a `text` field. `POST /api/process` returns recognized `entities` and
-rule-based `events`; `POST /api/process/event-trigger` returns rule-based `triggers` only. The
-`POST /api/process-file` endpoint accepts a UTF-8 text file as multipart form data under the
-`file` field. The API loads the NER checkpoint at startup, so make sure it is installed before
-launching the server.
+rule-based `events`; `POST /api/process/event-trigger` returns rule-based `triggers` only. For the
+complete endpoint contract and backend model workflows, see [SERVER-PIPELINE.md](SERVER-PIPELINE.md).
 
 ## Daily startup
 
@@ -112,4 +110,12 @@ After installing dependencies and downloading the models once, open two terminal
 
 If the API reports that a model cannot be found, check the `server/models/` directory structure in
 step 4. If the frontend cannot connect to the backend, make sure the backend is running on port
-`8001`.
+`3001`.
+
+## Project documentation
+
+- [DOCUMENTATION.md](DOCUMENTATION.md): index describing all Markdown documentation and the recommended reading order.
+- [DATA-PIPELINE.md](DATA-PIPELINE.md): corpus cleaning, sampling, annotation export, and data-quality notes.
+- [ANNOTATION-GUIDELINES.md](ANNOTATION-GUIDELINES.md): entity, trigger, relation, and review rules.
+- [SERVER-PIPELINE.md](SERVER-PIPELINE.md): API behavior, model workflows, evaluation, and tests.
+- [RESULTS.md](RESULTS.md): dataset summary, evaluation results, and error analysis.

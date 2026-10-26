@@ -24,7 +24,7 @@ See `notebooks/eda_raw_corpus.ipynb` for details.
 
 The 44,240 articles are cleaned to 43,170 articles, split into approximately 601,000 sentences, and
 then 601 sentences are selected for manual annotation in Label Studio. Steps 1–7 are documented in
-`data_pipeline/README.md`.
+[DATA-PIPELINE.md](DATA-PIPELINE.md).
 
 ### 1.3 Manually annotated gold data
 
