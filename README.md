@@ -98,15 +98,20 @@ the interactive API documentation is available at
 connects to the backend on port `3001`.
 
 The frontend sends JSON with a `text` field. `POST /api/process` returns recognized `entities` and
-rule-based `events`; `POST /api/process/event-trigger` returns rule-based `triggers` only. For the
-complete endpoint contract and backend model workflows, see [SERVER-PIPELINE.md](SERVER-PIPELINE.md).
+rule-based `events`; `POST /api/process/event-trigger` returns rule-based `triggers` only. When
+running without Docker, Vite forwards `/api` requests from port `5173` to the backend on port `3001`.
+For the complete endpoint contract and backend model workflows, see [SERVER-PIPELINE.md](SERVER-PIPELINE.md).
 
-## Daily startup
+## Daily startup without Docker
 
 After installing dependencies and downloading the models once, open two terminals:
 
-1. Frontend terminal: run `cd client`, then `npm run dev`.
-2. Backend terminal: run `cd server`, activate `.venv`, then run the `uvicorn` command from step 5.
+1. **Backend terminal:** run `cd server`, activate the virtual environment with
+   `.\.venv\Scripts\Activate.ps1`, then run the `uvicorn` command from step 5.
+2. **Frontend terminal:** run `cd client`, then `npm run dev`.
+
+Open the Vite URL, usually [http://localhost:5173](http://localhost:5173). Keep both terminals open.
+The Docker setup is separate; running the local frontend and backend does not require Docker.
 
 If the API reports that a model cannot be found, check the `server/models/` directory structure in
 step 4. If the frontend cannot connect to the backend, make sure the backend is running on port
