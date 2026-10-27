@@ -13,6 +13,7 @@ order. Use it to find the right guide for your task.
 | [SERVER-PIPELINE.md](SERVER-PIPELINE.md) | Explains the backend structure, API endpoints, NER/event workflows, training, evaluation, and tests. | When developing the backend or understanding how input text is processed. |
 | [RESULTS.md](RESULTS.md) | Summarizes the datasets, evaluation methods, experimental results, error analysis, and limitations. | When reviewing current system quality or experimental conclusions. |
 | [RUN.md](RUN.md) | A short navigation page linking to setup, data, annotation, and results documentation. Detailed installation and startup instructions are in `README.md`. | As a shortcut, including when following an existing link to this file. |
+| [DOCKER.md](DOCKER.md) | Explains how to build and run the local Docker package and prepare an archive that includes the NER model for handoff. | When packaging the application for another computer without deploying it to a server. |
 
 ## Documentation in subdirectories
 
