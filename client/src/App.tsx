@@ -24,12 +24,12 @@ function App() {
     setTriggerResult(null);
     try {
       const [response1, response2] = await Promise.all([
-        fetch("http://localhost:3001/api/process", {
+        fetch("/api/process", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: input }),
         }),
-        fetch("http://localhost:3001/api/process/event-trigger", {
+        fetch("/api/process/event-trigger", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: input }),
@@ -44,7 +44,7 @@ function App() {
     } catch (error) {
       console.error(error);
       setEntityResult({
-        error: "Cannot connect to backend server (http://localhost:3001)",
+        error: "Cannot connect to the application server.",
       });
     } finally {
       setLoading(false);

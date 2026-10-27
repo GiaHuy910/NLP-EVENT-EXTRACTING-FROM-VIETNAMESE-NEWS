@@ -112,9 +112,16 @@ If the API reports that a model cannot be found, check the `server/models/` dire
 step 4. If the frontend cannot connect to the backend, make sure the backend is running on port
 `3001`.
 
+## Run with Docker
+
+To package the frontend, API, and NER model for another computer, use the local Docker Compose
+setup. The recipient needs Docker Desktop but does not need to install Python, Node.js, npm, or
+download the model separately. Follow [DOCKER.md](DOCKER.md) to prepare and run the handoff package.
+
 ## Project documentation
 
 - [DOCUMENTATION.md](DOCUMENTATION.md): index describing all Markdown documentation and the recommended reading order.
+- [DOCKER.md](DOCKER.md): build, run, and hand off the application with Docker.
 - [DATA-PIPELINE.md](DATA-PIPELINE.md): corpus cleaning, sampling, annotation export, and data-quality notes.
 - [ANNOTATION-GUIDELINES.md](ANNOTATION-GUIDELINES.md): entity, trigger, relation, and review rules.
 - [SERVER-PIPELINE.md](SERVER-PIPELINE.md): API behavior, model workflows, evaluation, and tests.
